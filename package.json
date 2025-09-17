@@ -1,0 +1,62 @@
+{
+  "name": "@clc-blind/daisy-util",
+  "version": "1.0.0",
+  "author": "clc-blind",
+  "description": "TypeScript library for parsing and extracting information from DAISY v3 files (OPF, NCX, SMIL)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clc-blind/daisy-util.git"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "lint": "tsc",
+    "build": "tsup",
+    "test": "vitest run",
+    "check-exports": "attw --pack . --ignore-rules=cjs-resolves-to-esm",
+    "prepublish": "pnpm run build && pnpm run check-exports && pnpm run lint",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "date-fns": "4.1.0",
+    "unist-util-visit": "5.0.0",
+    "xast-util-from-xml": "4.0.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.2",
+    "@babel/core": "7.28.4",
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
+    "@types/hast": "3.0.4",
+    "@types/node": "22.18.0",
+    "@types/showdown": "2.0.6",
+    "@types/xast": "2.0.4",
+    "@typescript-eslint/eslint-plugin": "8.17.0",
+    "@typescript-eslint/parser": "8.17.0",
+    "@vitest/ui": "3.2.4",
+    "eslint": "8.57.1",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-import-resolver-typescript": "3.7.0",
+    "eslint-plugin-import": "2.31.0",
+    "eslint-plugin-prettier": "5.2.1",
+    "husky": "9.1.7",
+    "lint-staged": "16.1.6",
+    "prettier": "3.6.2",
+    "tsup": "8.5.0",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}
