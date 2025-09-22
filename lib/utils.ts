@@ -6,6 +6,7 @@ import { formatISO } from 'date-fns';
 import { visit } from 'unist-util-visit';
 import type { Element, Parent, Root, Text } from 'xast';
 import { fromXml } from 'xast-util-from-xml';
+import { toXml as baseToXml } from 'xast-util-to-xml';
 import type { BaseMetadata } from '@/lib/types';
 
 /**
@@ -19,6 +20,13 @@ export function parseXml(xmlContent: string): Root {
       `Invalid XML content: ${error instanceof Error ? error.message : 'Unknown error'}`,
     );
   }
+}
+
+/**
+ * Convert xast tree back to XML string
+ */
+export function toXml(tree: Root): string {
+  return baseToXml(tree);
 }
 
 /**
@@ -127,24 +135,6 @@ export function extractMetadata(metaElements: Element[]): BaseMetadata {
   });
 
   return metadata;
-}
-
-/**
- * Update metadata with new values
- */
-export function updateMetadata(
-  element: Element[],
-  newValue: Partial<BaseMetadata>,
-) {
-  element.forEach((meta) => {
-    const name = getAttribute(meta, 'name');
-    if (name && newValue[name as keyof BaseMetadata] !== undefined) {
-      meta.attributes = {
-        ...meta.attributes,
-        content: String(newValue[name as keyof BaseMetadata]),
-      };
-    }
-  });
 }
 
 /**

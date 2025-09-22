@@ -147,8 +147,98 @@ Duration in ms: 8130000
 
 ## API
 
-This package exports the identifiers [`parseOpf`](#parseopfxml), [`parseNcx`](#parsencxxml), [`parseSmil`](#parsesmilxml-filename), [`parseTime`](#parsetimetimestring), [`formatTime`](#formattimemilliseconds), and [`calculateDuration`](#calculatedurationstart-end).
-There is no default export.
+This package exports the following functions and types. There is no default export.
+
+- [`parseOpf(xml)`](#parseopfxml)
+- [`updateOpfMetadataFromTree(tree, newMetadata, options?)`](#updateopfmetadatafromtreetree-newmetadata-options)
+- [`parseNcx(xml)`](#parsencxxml)
+- [`updateNcxMetadataFromTree(tree, newMetadata, options?)`](#updatencxmetadatafromtreetree-newmetadata-options)
+- [`parseSmil(xml, filename)`](#parsesmilxml-filename)
+- [`updateSmilMetadataFromTree(tree, newMetadata, options?)`](#updatesmilmetadatafromtreetree-newmetadata-options)
+- [`parseDtb(xml)`](#parsedtbxml)
+- [`updateDtbMetadataFromTree(tree, newMetadata, options?)`](#updatedtbmetadatafromtreetree-newmetadata-options)
+- [`parseXml(xml)`](#parsexmlxml)
+- [`toXml(tree)`](#toxmltree)
+- [`extractMetadata(metaElements)`](#extractmetadatametaelements)
+- [`parseTime(timeString)`](#parsetimetimestring)
+- [`formatTime(milliseconds)`](#formattimemilliseconds)
+- [`calculateDuration(start, end)`](#calculatedurationstart-end)
+
+### `parseOpf(xml)`
+
+Parse a DAISY v3 OPF (Open Packaging Format) file and extract metadata, manifest, and spine information.
+
+### `updateOpfMetadataFromTree(tree, newMetadata, options?)`
+
+Update OPF metadata in-place on an xast tree. Accepts a parsed OPF tree, a metadata object, and optional options (e.g., `{ createIfMissing: true }`).
+
+### `parseNcx(xml)`
+
+Parse a DAISY v3 NCX (Navigation Control for XML) file and extract navigation structure.
+
+### `updateNcxMetadataFromTree(tree, newMetadata, options?)`
+
+Update NCX metadata in-place on an xast tree. Accepts a parsed NCX tree, a metadata object, and optional options.
+
+### `parseSmil(xml, filename)`
+
+Parse a DAISY v3 SMIL (Synchronized Multimedia Integration Language) file and extract audio timing information.
+
+### `updateSmilMetadataFromTree(tree, newMetadata, options?)`
+
+Update SMIL metadata in-place on an xast tree. Accepts a parsed SMIL tree, a metadata object, and optional options.
+
+### `parseDtb(xml)`
+
+Parse a DAISY DTBook or OPF XML file and extract metadata and tree.
+
+### `updateDtbMetadataFromTree(tree, newMetadata, options?)`
+
+Update DTB/OPF metadata in-place on an xast tree. Accepts a parsed tree, a metadata object, and optional options.
+
+### `parseXml(xml)`
+
+Parse any XML string into an xast tree. Throws on invalid XML.
+
+### `toXml(tree)`
+
+Serialize an xast tree back to XML string.
+
+### `extractMetadata(metaElements)`
+
+Extract metadata key-value pairs from an array of <meta> elements.
+
+### `parseTime(timeString)`
+
+Parse a DAISY v3 time string (e.g., `0:50:27.083`) and convert to milliseconds.
+
+### `formatTime(milliseconds)`
+
+Format milliseconds to an ISO time string.
+
+### `calculateDuration(start, end)`
+
+Calculate duration in milliseconds between two DAISY time strings.
+
+### `findElement(tree, tagName)`
+
+Find the first element with the given tag name in an xast tree.
+
+### `findElements(tree, tagName)`
+
+Find all elements with the given tag name (recursive) in an xast tree.
+
+### `findDirectChildren(tree, tagName)`
+
+Find all direct child elements with the given tag name (non-recursive).
+
+### `getAttribute(element, attributeName)`
+
+Get the value of an attribute from an xast element.
+
+### `getTextContent(element)`
+
+Get the concatenated text content from an xast element.
 
 ### `parseOpf(xml)`
 

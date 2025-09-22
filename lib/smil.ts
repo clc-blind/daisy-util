@@ -2,33 +2,25 @@
  * Parser for DAISY v3 SMIL (Synchronized Multimedia Integration Language) files
  */
 
-import type { Element } from 'xast';
+import { select, selectAll } from 'unist-util-select';
+import { visit } from 'unist-util-visit';
+import type { Element, Root } from 'xast';
 import type { AudioClip, SmilData, SmilMetadata } from '@/lib/types';
-import {
-  calculateDuration,
-  extractMetadata,
-  findElement,
-  findElements,
-  getAttribute,
-  parseXml,
-} from '@/lib/utils';
+import { calculateDuration, extractMetadata, parseXml } from '@/lib/utils';
 
 /**
  * Extract audio clip information from a DAISY v3 SMIL element
  */
 function extractAudioClip(element: Element): AudioClip | null {
   // Look for audio element within this element
-  const audioElement = findElement(element, 'audio');
+  const audioElement = select('element[name=audio]', element) as Element;
 
   if (!audioElement) {
     return null;
   }
 
-  const src = getAttribute(audioElement, 'src');
-
   // DAISY v3 uses clipBegin/clipEnd attributes (camelCase)
-  const clipBegin = getAttribute(audioElement, 'clipBegin');
-  const clipEnd = getAttribute(audioElement, 'clipEnd');
+  const { src, clipBegin, clipEnd } = audioElement.attributes;
 
   if (!src || !clipBegin || !clipEnd) {
     return null;
@@ -50,48 +42,76 @@ function extractAudioClip(element: Element): AudioClip | null {
  */
 export function parseSmil(smilContent: string, smilFileName: string): SmilData {
   const tree = parseXml(smilContent);
-  const smilElement = findElement(tree, 'smil');
+  const smilElement = select('element[name=smil]', tree);
 
   if (!smilElement) {
     throw new Error('Invalid SMIL file: no smil element found');
   }
 
   // Extract metadata from head
-  const headElement = findElement(smilElement, 'head');
-  const metaElements = headElement ? findElements(headElement, 'meta') : [];
+  const metaElements = selectAll('element[name=meta]', tree) as Element[];
   const metadata: SmilMetadata = extractMetadata(metaElements);
 
-  // Extract total elapsed time from meta (DAISY v3 uses dtb:totalElapsedTime)
-  const totalTimeElement = metaElements.find(
-    (meta) => getAttribute(meta, 'name') === 'dtb:totalElapsedTime',
-  );
-  const totalElapsedTime = totalTimeElement
-    ? getAttribute(totalTimeElement, 'content')
-    : undefined;
-
   // Extract body and parse par/seq elements
-  const bodyElement = findElement(smilElement, 'body');
   const elements: Record<string, AudioClip> = {};
+  const parElements = selectAll('element[name=par]', tree) as Element[];
 
-  if (bodyElement) {
-    // In DAISY v3, audio clips are typically in <par> elements
-    // <seq> elements are containers and don't have direct audio
-    const parElements = findElements(bodyElement, 'par');
-
-    parElements.forEach((element) => {
-      const id = getAttribute(element, 'id');
-      if (id) {
-        const audioClip = extractAudioClip(element);
-        if (audioClip) {
-          elements[`${smilFileName}#${id}`] = audioClip;
-        }
+  parElements.forEach((element) => {
+    const { id } = element.attributes;
+    if (id) {
+      const audioClip = extractAudioClip(element);
+      if (audioClip) {
+        elements[`${smilFileName}#${id}`] = audioClip;
       }
-    });
-  }
+    }
+  });
 
   return {
     metadata,
     elements,
-    totalElapsedTime,
   };
+}
+
+/**
+ * Update SMIL metadata in-place from a new XML tree
+ * Returns updated SmilData
+ */
+export function updateSmilMetadataFromTree(
+  tree: Root,
+  newMetadata: Partial<SmilMetadata>,
+  options?: { createIfMissing?: boolean },
+) {
+  const shouldCreate = options?.createIfMissing !== false;
+
+  const updatedKeys = new Set<string>();
+
+  visit(tree, { type: 'element', name: 'meta' }, (element, index, parent) => {
+    if (element.type !== 'element') {
+      return;
+    }
+
+    const name = element.attributes?.name;
+
+    if (name && newMetadata[name] !== undefined) {
+      element.attributes = {
+        ...element.attributes,
+        content: String(newMetadata[name]),
+      };
+      updatedKeys.add(name);
+    }
+
+    // Optionally add new <meta> elements for keys in newMetadata that were not updated
+    if (shouldCreate) {
+      Object.entries(newMetadata).forEach(([key, value]) => {
+        if (updatedKeys.has(key)) return;
+
+        parent?.children.push({
+          type: 'element',
+          name: 'meta',
+          attributes: { name: key, content: String(value) },
+          children: [],
+        });
+      });
+    }
+  });
 }

@@ -17,19 +17,16 @@ export type {
   AudioClip,
 } from '@/lib/types';
 
-export { parseOpf } from '@/lib/opf';
-export { parseNcx } from '@/lib/ncx';
-export { parseSmil } from '@/lib/smil';
+export { parseOpf, updateOpfMetadataFromTree } from '@/lib/opf';
+export { parseNcx, updateNcxMetadataFromTree } from '@/lib/ncx';
+export { parseSmil, updateSmilMetadataFromTree } from '@/lib/smil';
+export { parseDtb, updateDtbMetadataFromTree } from '@/lib/dtb';
 
 // Utility functions
 export {
-  findElement,
-  findElements,
-  findDirectChildren,
-  getAttribute,
-  getTextContent,
+  parseXml,
+  toXml,
   extractMetadata,
-  updateMetadata,
   parseTime,
   formatTime,
   calculateDuration,
