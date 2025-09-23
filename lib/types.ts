@@ -3,6 +3,8 @@
  * According to DAISY 3 specifications with file-type-specific metadata
  */
 
+import type { Root } from 'xast';
+
 /**
  * Base metadata interface for all DAISY v3 files
  * Contains common fields that may appear in any file type
@@ -172,6 +174,39 @@ export interface SmilData {
   metadata: SmilMetadata;
   /** Object mapping from "smil_file_name#element_id" to audio clip data */
   elements: Record<string, AudioClip>;
-  /** Total duration of the SMIL file */
-  totalElapsedTime?: string;
+}
+
+/**
+ * OPF file metadata containing Dublin Core and DTB-specific elements
+ * Based on DAISY 3 Package File specification section 3.2
+ */
+export interface DtbMetadata extends BaseMetadata {
+  /** Dublin Core Identifier - unique identifier for the publication */
+  identifier?: string;
+  /** Dublin Core Title - the title of the publication */
+  title?: string;
+  /** Dublin Core Creator/Author - creator(s) of the publication */
+  creator?: string | string[];
+  /** Dublin Core Subject - subject or keywords */
+  subject?: string | string[];
+  /** Dublin Core Description - description of the publication */
+  description?: string;
+  /** Dublin Core Publisher - publisher of the publication */
+  publisher?: string;
+  /** Dublin Core Date - publication date (ISO 8601 format) */
+  date?: string;
+  /** Dublin Core Language - language of the publication (ISO 639-1) */
+  language?: string;
+  /** Dublin Core Source - ISBN or source reference */
+  source?: string;
+  /** Dublin Core Format - must be "ANSI/NISO Z39.86-2005" for DAISY v3 */
+  format?: string;
+}
+
+/**
+ * Complete structure extract from a DAISY v3 XML file
+ */
+export interface DtbData {
+  metadata: DtbMetadata;
+  tree: Root;
 }
