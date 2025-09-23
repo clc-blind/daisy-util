@@ -16,10 +16,23 @@ export function parseDtb(xmlContent: string): DtbData {
 
   // Extract metadata from head
   const metaElements = selectAll('element[name=meta]', tree) as Element[];
-  const metadata: DtbMetadata = extractMetadata(metaElements);
+  const metadata = extractMetadata(metaElements);
+
+  const dtbMetadata = {
+    creator: metadata['dc:Creator'] || '',
+    title: metadata['dc:Title'] || '',
+    publisher: metadata['dc:Publisher'] || '',
+    date: metadata['dc:Date'] || '',
+    identifier: metadata['dc:Identifier'] || '',
+    description: metadata['dc:Description'] || '',
+    format: metadata['dc:Format'] || '',
+    language: metadata['dc:Language'] || '',
+    source: metadata['dc:Source'] || '',
+    subject: metadata['dc:Subject'] || '',
+  } satisfies DtbMetadata;
 
   return {
-    metadata,
+    metadata: dtbMetadata,
     tree,
   };
 }

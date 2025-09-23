@@ -11,7 +11,7 @@ import type { Root } from 'xast';
  */
 export interface BaseMetadata {
   /** Additional metadata fields specific to each file type */
-  [key: string]: string | string[] | undefined;
+  [key: string]: string | undefined;
 }
 
 /**
@@ -24,9 +24,9 @@ export interface OpfMetadata extends BaseMetadata {
   /** Dublin Core Title - the title of the publication */
   title?: string;
   /** Dublin Core Creator/Author - creator(s) of the publication */
-  creator?: string | string[];
+  creator?: string;
   /** Dublin Core Subject - subject or keywords */
-  subject?: string | string[];
+  subject?: string;
   /** Dublin Core Description - description of the publication */
   description?: string;
   /** Dublin Core Publisher - publisher of the publication */
@@ -186,9 +186,9 @@ export interface DtbMetadata extends BaseMetadata {
   /** Dublin Core Title - the title of the publication */
   title?: string;
   /** Dublin Core Creator/Author - creator(s) of the publication */
-  creator?: string | string[];
+  creator?: string;
   /** Dublin Core Subject - subject or keywords */
-  subject?: string | string[];
+  subject?: string;
   /** Dublin Core Description - description of the publication */
   description?: string;
   /** Dublin Core Publisher - publisher of the publication */

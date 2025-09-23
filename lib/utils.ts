@@ -3,8 +3,7 @@
  */
 
 import { formatISO } from 'date-fns';
-import { visit } from 'unist-util-visit';
-import type { Element, Parent, Root, Text } from 'xast';
+import type { Element, Root } from 'xast';
 import { fromXml } from 'xast-util-from-xml';
 import { toXml as baseToXml } from 'xast-util-to-xml';
 import type { BaseMetadata } from '@/lib/types';
@@ -30,107 +29,16 @@ export function toXml(tree: Root): string {
 }
 
 /**
- * Find the first element with matching tag name
- * Using unist-util-visit for robust tree traversal
- */
-export function findElement(
-  tree: Parent,
-  tagName: string,
-): Element | undefined {
-  let result: Element | undefined;
-
-  visit(tree, 'element', (node: Element) => {
-    if (node.name === tagName) {
-      result = node;
-      return false; // Stop traversal
-    }
-    return undefined;
-  });
-
-  return result;
-}
-
-/**
- * Find all direct child elements with matching tag name (non-recursive)
- */
-export function findDirectChildren(tree: Parent, tagName: string): Element[] {
-  const results: Element[] = [];
-
-  if (tree.children) {
-    tree.children.forEach((child) => {
-      if (child.type === 'element' && child.name === tagName) {
-        results.push(child as Element);
-      }
-    });
-  }
-
-  return results;
-}
-
-/**
- * Find all elements with matching tag name (recursive)
- * Using unist-util-visit for robust tree traversal
- */
-export function findElements(tree: Parent, tagName: string): Element[] {
-  const results: Element[] = [];
-
-  visit(tree, 'element', (node: Element) => {
-    if (node.name === tagName) {
-      results.push(node);
-    }
-    return undefined;
-  });
-
-  return results;
-}
-
-/**
- * Get attribute value from element
- */
-export function getAttribute(
-  element: Element,
-  attributeName: string,
-): string | undefined {
-  const value = element.attributes?.[attributeName];
-  return value ?? undefined;
-}
-
-/**
- * Get text content from element (improved with better text aggregation)
- */
-export function getTextContent(element: Element): string {
-  const textParts: string[] = [];
-
-  visit(element, 'text', (node: Text) => {
-    textParts.push(node.value);
-    return undefined;
-  });
-
-  return textParts.join('').trim();
-}
-
-/**
  * Extract metadata from meta elements with better error handling
  */
 export function extractMetadata(metaElements: Element[]): BaseMetadata {
   const metadata: BaseMetadata = {};
 
   metaElements.forEach((meta) => {
-    const name = getAttribute(meta, 'name');
-    const content = getAttribute(meta, 'content');
+    const { name, content } = meta.attributes;
 
     if (name && content) {
-      // Handle multiple values for the same key
-      if (metadata[name]) {
-        const existing = metadata[name];
-        if (Array.isArray(existing)) {
-          existing.push(content);
-        } else {
-          metadata[name] = [existing, content];
-        }
-      } else {
-        metadata[name] = content;
-      }
+      metadata[name] = content;
     }
   });
 
