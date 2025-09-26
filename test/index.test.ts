@@ -16,6 +16,116 @@ import {
   updateOpfMetadataFromTree,
   updateSmilMetadataFromTree,
 } from '../lib';
+import { paginateDaisyTree, splitDaisyTreeByTag } from '@/lib/dtb';
+
+describe('paginateDaisyTree', () => {
+  it('paginates a flat list of <p> elements into pages of given size', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'container',
+      attributes: {},
+      children: [
+        { type: 'element', name: 'p', attributes: { id: 'a' }, children: [] },
+        { type: 'element', name: 'p', attributes: { id: 'b' }, children: [] },
+        { type: 'element', name: 'p', attributes: { id: 'c' }, children: [] },
+        { type: 'element', name: 'p', attributes: { id: 'd' }, children: [] },
+        { type: 'element', name: 'p', attributes: { id: 'e' }, children: [] },
+      ],
+    };
+    const pages = paginateDaisyTree({
+      tree: input,
+      itemsPerPage: 2,
+      tagName: 'p',
+    });
+    expect(pages).toHaveLength(3);
+    expect(pages[0]).toBeDefined();
+    expect(pages[1]).toBeDefined();
+    expect(pages[2]).toBeDefined();
+    if (pages[0] && pages[1] && pages[2]) {
+      expect(pages[0].data).toHaveLength(2);
+      expect((pages[0].data[0]?.children[0] as Element).attributes.id).toBe(
+        'a',
+      );
+      expect((pages[0].data[1]?.children[0] as Element).attributes.id).toBe(
+        'b',
+      );
+      expect(pages[1].data).toHaveLength(2);
+      expect((pages[1].data[0]?.children[0] as Element).attributes.id).toBe(
+        'c',
+      );
+      expect((pages[1].data[1]?.children[0] as Element).attributes.id).toBe(
+        'd',
+      );
+      expect(pages[2].data).toHaveLength(1);
+      expect((pages[2].data[0]?.children[0] as Element).attributes.id).toBe(
+        'e',
+      );
+      expect(pages[0].currentPage).toBe(1);
+      expect(pages[1].currentPage).toBe(2);
+      expect(pages[2].currentPage).toBe(3);
+      expect(pages[0].url.next).toBe('/2');
+      expect(pages[2].url.next).toBeUndefined();
+      expect(pages[0].url.prev).toBeUndefined();
+      expect(pages[1].url.prev).toBe('/1');
+    }
+  });
+
+  it('returns a single page with the original tree if there are no matching elements', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'container',
+      attributes: {},
+      children: [
+        { type: 'element', name: 'div', attributes: {}, children: [] },
+      ],
+    };
+    const pages = paginateDaisyTree({
+      tree: input,
+      itemsPerPage: 2,
+      tagName: 'p',
+    });
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toBeDefined();
+    if (pages[0]) {
+      expect(pages[0].data).toHaveLength(1);
+      expect((pages[0].data[0]?.children[0] as Element).name).toBe('div');
+      expect(pages[0].currentPage).toBe(1);
+      expect(pages[0].lastPage).toBe(1);
+    }
+  });
+
+  it('handles itemsPerPage greater than number of parts', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'container',
+      attributes: {},
+      children: [
+        { type: 'element', name: 'p', attributes: { id: 'a' }, children: [] },
+        { type: 'element', name: 'p', attributes: { id: 'b' }, children: [] },
+      ],
+    };
+    const pages = paginateDaisyTree({
+      tree: input,
+      itemsPerPage: 10,
+      tagName: 'p',
+    });
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toBeDefined();
+    if (pages[0]) {
+      expect(pages[0].data).toHaveLength(2);
+      expect((pages[0].data[0]?.children[0] as Element).attributes.id).toBe(
+        'a',
+      );
+      expect((pages[0].data[1]?.children[0] as Element).attributes.id).toBe(
+        'b',
+      );
+      expect(pages[0].currentPage).toBe(1);
+      expect(pages[0].lastPage).toBe(1);
+      expect(pages[0].url.next).toBeUndefined();
+      expect(pages[0].url.prev).toBeUndefined();
+    }
+  });
+});
 
 describe('DAISY v3 Utility Library', () => {
   describe('parseTime', () => {
@@ -347,5 +457,280 @@ describe('DAISY v3 Utility Library', () => {
       const dtbTotalElapsedTime = meta['dtb:totalElapsedTime'];
       expect(dtbTotalElapsedTime).toBe('1:23:45');
     });
+  });
+});
+
+describe('splitDaisyTreeByTag', () => {
+  it('returns one part for tree with only non-element children', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'root',
+      attributes: {},
+      children: [
+        { type: 'text', value: 'Just text' },
+        { type: 'comment', value: 'A comment' },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(1);
+    expect(parts).toHaveLength(1);
+    expect(parts[0]?.children?.length).toBe(2);
+    expect(parts[0]?.children?.[0]?.type).toBe('text');
+    expect(parts[0]?.children?.[1]?.type).toBe('comment');
+  });
+
+  it('returns one part for tree where all children match', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'root',
+      attributes: {},
+      children: [
+        { type: 'element', name: 'p', attributes: { id: '1' }, children: [] },
+        { type: 'element', name: 'p', attributes: { id: '2' }, children: [] },
+        { type: 'element', name: 'p', attributes: { id: '3' }, children: [] },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(3);
+    expect(parts[0]?.children?.length).toBe(1);
+    expect((parts[0]?.children?.[0] as Element).attributes.id).toBe('1');
+    expect((parts[1]?.children?.[0] as Element).attributes.id).toBe('2');
+    expect((parts[2]?.children?.[0] as Element).attributes.id).toBe('3');
+  });
+
+  it('splits interleaved matches and non-matches correctly', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'root',
+      attributes: {},
+      children: [
+        { type: 'element', name: 'a', attributes: {}, children: [] },
+        { type: 'element', name: 'p', attributes: { id: 'x' }, children: [] },
+        { type: 'element', name: 'b', attributes: {}, children: [] },
+        { type: 'element', name: 'p', attributes: { id: 'y' }, children: [] },
+        { type: 'element', name: 'c', attributes: {}, children: [] },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(3);
+    expect(parts[0]?.children?.length).toBe(2);
+    expect((parts[0]?.children?.[0] as Element).name).toBe('a');
+    expect((parts[0]?.children?.[1] as Element).name).toBe('p');
+    expect((parts[1]?.children?.[0] as Element).name).toBe('b');
+    expect((parts[1]?.children?.[1] as Element).name).toBe('p');
+    expect(parts[2]?.children?.length).toBe(1);
+    expect((parts[2]?.children?.[0] as Element).name).toBe('c');
+  });
+
+  it('handles tree with only one matching element', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'root',
+      attributes: {},
+      children: [
+        { type: 'element', name: 'a', attributes: {}, children: [] },
+        {
+          type: 'element',
+          name: 'p',
+          attributes: { id: 'only' },
+          children: [],
+        },
+        { type: 'element', name: 'b', attributes: {}, children: [] },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(2);
+    expect(parts[0]?.children?.length).toBe(2);
+    expect((parts[0]?.children?.[0] as Element).name).toBe('a');
+    expect((parts[0]?.children?.[1] as Element).name).toBe('p');
+    expect((parts[1]?.children?.[0] as Element).name).toBe('b');
+  });
+  it('splits direct children by tag name, collects up to and including each match', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'section',
+      attributes: {},
+      children: [
+        {
+          type: 'element',
+          name: 'p',
+          attributes: { id: 'p1' },
+          children: [{ type: 'text', value: 'Paragraph 1' }],
+        },
+        {
+          type: 'element',
+          name: 'p',
+          attributes: { id: 'p2' },
+          children: [{ type: 'text', value: 'Paragraph 2' }],
+        },
+        {
+          type: 'element',
+          name: 'div',
+          attributes: {},
+          children: [
+            {
+              type: 'element',
+              name: 'p',
+              attributes: { id: 'p3' },
+              children: [{ type: 'text', value: 'Paragraph 3' }],
+            },
+          ],
+        },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(3);
+    expect(parts).toHaveLength(3);
+    expect(parts[0]?.children?.length).toBe(1);
+    expect((parts[0]?.children?.[0] as Element).attributes.id).toBe('p1');
+    expect(parts[1]?.children?.length).toBe(1);
+    expect((parts[1]?.children?.[0] as Element).name).toBe('p');
+  });
+
+  it('returns the original tree as a single part if no splitTag is found', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'section',
+      attributes: {},
+      children: [
+        {
+          type: 'element',
+          name: 'div',
+          attributes: {},
+          children: [
+            {
+              type: 'element',
+              name: 'span',
+              attributes: {},
+              children: [{ type: 'text', value: 'No split here' }],
+            },
+          ],
+        },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(1);
+    expect(parts).toHaveLength(1);
+    expect((parts[0]?.children?.[0] as Element).name).toBe('div');
+  });
+
+  it('returns empty if tree has no children', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'empty',
+      attributes: {},
+      children: [],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(0);
+    expect(parts).toHaveLength(0);
+  });
+
+  it('splits only at root level, not nested', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'main',
+      attributes: {},
+      children: [
+        {
+          type: 'element',
+          name: 'section',
+          attributes: {},
+          children: [
+            {
+              type: 'element',
+              name: 'p',
+              attributes: { id: 'a' },
+              children: [{ type: 'text', value: 'A' }],
+            },
+            {
+              type: 'element',
+              name: 'p',
+              attributes: { id: 'b' },
+              children: [{ type: 'text', value: 'B' }],
+            },
+          ],
+        },
+        {
+          type: 'element',
+          name: 'section',
+          attributes: {},
+          children: [
+            {
+              type: 'element',
+              name: 'p',
+              attributes: { id: 'c' },
+              children: [{ type: 'text', value: 'C' }],
+            },
+          ],
+        },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(1);
+    expect(parts[0]?.children?.length).toBe(2);
+    expect((parts[0]?.children?.[0] as Element).name).toBe('section');
+    expect((parts[0]?.children?.[1] as Element).name).toBe('section');
+  });
+
+  it('splits a flat list of ps into one part per p', () => {
+    const input: Element = {
+      type: 'element',
+      name: 'container',
+      attributes: {},
+      children: [
+        {
+          type: 'element',
+          name: 'p',
+          attributes: { id: 'a' },
+          children: [{ type: 'text', value: 'A' }],
+        },
+        {
+          type: 'element',
+          name: 'p',
+          attributes: { id: 'b' },
+          children: [{ type: 'text', value: 'B' }],
+        },
+        {
+          type: 'element',
+          name: 'p',
+          attributes: { id: 'c' },
+          children: [{ type: 'text', value: 'C' }],
+        },
+      ],
+    };
+    const { parts, totalParts } = splitDaisyTreeByTag(input, {
+      type: 'element',
+      name: 'p',
+    });
+    expect(totalParts).toBe(3);
+    expect(parts[0]?.children?.length).toBe(1);
+    expect((parts[0]?.children?.[0] as Element).attributes.id).toBe('a');
+    expect((parts[1]?.children?.[0] as Element).attributes.id).toBe('b');
+    expect((parts[2]?.children?.[0] as Element).attributes.id).toBe('c');
   });
 });

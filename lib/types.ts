@@ -210,3 +210,42 @@ export interface DtbData {
   metadata: DtbMetadata;
   tree: Root;
 }
+
+/**
+ * Result of splitting a DAISY tree by a specific tag
+ */
+export interface DaisyTreeSplitResult {
+  parts: Root[];
+  totalParts: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface Page<T = any> {
+  /** Array containing the page’s slice of data that you passed to the paginate() function */
+  data: T[];
+  /** Metadata */
+  /** The count of the first item on the page, starting from 0 */
+  start: number;
+  /** The count of the last item on the page, starting from 0 */
+  end: number;
+  /** Total number of results */
+  total: number;
+  /** The current page number, starting from 1 */
+  currentPage: number;
+  /** Number of items per page (default: 10) */
+  size: number;
+  /** Number of last page */
+  lastPage: number;
+  url: {
+    /** Url of the current page */
+    current: string;
+    /** Url of the previous page (if there is one) */
+    prev: string | undefined;
+    /** Url of the next page (if there is one) */
+    next: string | undefined;
+    /** Url of the first page (if the current page is not the first page) */
+    first: string | undefined;
+    /** Url of the last page (if the current page in not the last page) */
+    last: string | undefined;
+  };
+}
