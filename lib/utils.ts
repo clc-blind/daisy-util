@@ -57,11 +57,19 @@ export function parseTime(timeStr: string): number {
     // - "0:50:27.083" (hours:minutes:seconds.milliseconds)
     // - "40:08:40" (hours:minutes:seconds)
     // - "0:00:02.029" (hours:minutes:seconds.milliseconds)
+    // - "1.234s" (seconds with decimal and 's' suffix)
 
     const timePattern = /^(\d+):(\d{2}):(\d{2})(?:\.(\d{3}))?$/;
     const match = timeStr.match(timePattern);
 
     if (!match) {
+      if (timeStr.endsWith('s')) {
+        const seconds = parseFloat(timeStr.slice(0, -1));
+        if (!Number.isNaN(seconds)) {
+          return Math.round(seconds * 1000);
+        }
+      }
+
       return 0;
     }
 

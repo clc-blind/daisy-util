@@ -140,6 +140,8 @@ describe('DAISY v3 Utility Library', () => {
       expect(parseTime('40:08:40')).toBe(144520000); // 40 hours 8 minutes 40 seconds
       expect(parseTime('0:01:30')).toBe(90000); // 1 minute 30 seconds
       expect(parseTime('1:23:45')).toBe(5025000); // 1 hour 23 minutes 45 seconds
+      expect(parseTime('1.178s')).toBe(1178); // 1.178 seconds with 's' suffix
+      expect(parseTime('245.793s')).toBe(245793); // 245.793 seconds with 's' suffix
     });
 
     it('should handle empty or invalid strings', () => {
