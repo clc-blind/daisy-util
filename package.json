@@ -1,6 +1,6 @@
 {
   "name": "@clc-blind/daisy-util",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": "clc-blind",
   "description": "TypeScript library for parsing and extracting information from DAISY v3 files (OPF, NCX, SMIL)",
   "repository": {

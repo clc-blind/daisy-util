@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.4](https://github.com/clc-blind/daisy-util/compare/v1.0.3...v1.0.4) (2025-10-01)
+
+
+### Bug Fixes
+
+* **lib:** support second time pattern ([b3e16ec](https://github.com/clc-blind/daisy-util/commit/b3e16ecd81b82e376442a21f94b6549531b7bbb3))
+* **lib:** support second time pattern ([b4cea4d](https://github.com/clc-blind/daisy-util/commit/b4cea4dc79132adda28cf5a81bdee306fbaa79e7))
+
 ## [1.0.3](https://github.com/clc-blind/daisy-util/compare/v1.0.2...v1.0.3) (2025-09-26)
 
 
