@@ -2,7 +2,6 @@
  * Utility functions for DAISY v3 file parsing
  */
 
-import { formatISO } from 'date-fns';
 import type { Element, Root } from 'xast';
 import { fromXml } from 'xast-util-from-xml';
 import { toXml as baseToXml } from 'xast-util-to-xml';
@@ -102,5 +101,14 @@ export function calculateDuration(startTime: string, endTime: string): number {
  * Format milliseconds to time string
  */
 export function formatTime(milliseconds: number): string {
-  return formatISO(new Date(milliseconds));
+  const hours = String(Math.floor(milliseconds / 3600000)).padStart(2, '0');
+  const minutes = String(Math.floor((milliseconds % 3600000) / 60000)).padStart(
+    2,
+    '0',
+  );
+  const secs = (milliseconds % 60000) / 1000;
+
+  const seconds = secs.toFixed(3).padStart(6, '0'); // includes .SSS
+
+  return `${hours}:${minutes}:${seconds}`;
 }
