@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.5](https://github.com/clc-blind/daisy-util/compare/v1.0.4...v1.0.5) (2025-12-08)
+
+
+### Bug Fixes
+
+* **lib:** update utils ([fec510e](https://github.com/clc-blind/daisy-util/commit/fec510e6766815dcec2b9ddc189e529f0db42068))
+* **lib:** update utils ([2c942f0](https://github.com/clc-blind/daisy-util/commit/2c942f07ca55ed2b8cfe327bd4b29fa5ba16c41f))
+
 ## [1.0.4](https://github.com/clc-blind/daisy-util/compare/v1.0.3...v1.0.4) (2025-10-01)
 
 
