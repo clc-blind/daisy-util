@@ -3,6 +3,7 @@
  */
 
 import { select, selectAll } from 'unist-util-select';
+import { visit } from 'unist-util-visit';
 import type { Element, Root, Text } from 'xast';
 import type {
   ManifestItem,
@@ -190,4 +191,27 @@ export function updateOpfMetadataFromTree(
       }
     });
   }
+}
+
+/**
+ * Rename a file in the OPF manifest (in-place)
+ * Updates all <item> elements with matching href
+ * @param tree XML tree of the OPF file
+ * @param oldHref Current href of the file to rename
+ * @param newHref New href to set
+ */
+export function renameFileInOpfTree(
+  tree: Root,
+  oldHref: string,
+  newHref: string,
+) {
+  visit(tree, 'element', (node: Element) => {
+    if (node.name === 'item' && node.attributes?.href === oldHref) {
+      node.attributes.href = newHref;
+
+      return false; // Stop traversing this branch
+    }
+
+    return undefined;
+  });
 }

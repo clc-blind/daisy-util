@@ -222,3 +222,42 @@ export function paginateDaisyTree({
 
   return pages;
 }
+
+export function updateDaisyTree({
+  tree,
+  test = 'element',
+  check,
+  newSubtree,
+  newAttributes,
+  nodeSelector,
+}: {
+  tree: Root;
+  test?: Test;
+  check?: (node: Element) => boolean;
+  newSubtree?: Root;
+  newAttributes?: Record<string, string>;
+  nodeSelector?: (node: Element) => Element;
+}) {
+  visit(tree, test, (node) => {
+    if (node.type !== 'element') return undefined;
+
+    if (check && !check(node)) return undefined;
+
+    const targetNode = nodeSelector ? nodeSelector(node) : node;
+
+    if (!targetNode) return undefined;
+
+    if (newSubtree) {
+      targetNode.children = newSubtree.children as Element[];
+      return false; // Stop traversing this branch
+    }
+    if (newAttributes) {
+      targetNode.attributes = {
+        ...targetNode.attributes,
+        ...newAttributes,
+      };
+      return false; // Stop traversing this branch
+    }
+    return undefined;
+  });
+}

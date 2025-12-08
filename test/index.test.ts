@@ -1,6 +1,6 @@
 import { select, selectAll } from 'unist-util-select';
 import { describe, expect, it } from 'vitest';
-import type { Element, Text } from 'xast';
+import type { Element, Root, Text } from 'xast';
 import {
   type OpfData,
   extractMetadata,
@@ -11,12 +11,18 @@ import {
   parseSmil,
   parseTime,
   parseXml,
+  renameFileInOpfTree,
+  updateAudioTimestampsById,
   updateDtbMetadataFromTree,
   updateNcxMetadataFromTree,
   updateOpfMetadataFromTree,
   updateSmilMetadataFromTree,
 } from '../lib';
-import { paginateDaisyTree, splitDaisyTreeByTag } from '@/lib/dtb';
+import {
+  paginateDaisyTree,
+  splitDaisyTreeByTag,
+  updateDaisyTree,
+} from '@/lib/dtb';
 
 describe('paginateDaisyTree', () => {
   it('paginates a flat list of <p> elements into pages of given size', () => {
@@ -155,7 +161,7 @@ describe('DAISY v3 Utility Library', () => {
   describe('formatTime', () => {
     it('should format time using ISO format', () => {
       const result = formatTime(90000); // 90 seconds in milliseconds
-      expect(result).toContain('1970'); // ISO format includes year
+      expect(result).toContain('00:01:30.000'); // ISO format includes year
     });
   });
 
@@ -734,5 +740,398 @@ describe('splitDaisyTreeByTag', () => {
     expect((parts[0]?.children?.[0] as Element).attributes.id).toBe('a');
     expect((parts[1]?.children?.[0] as Element).attributes.id).toBe('b');
     expect((parts[2]?.children?.[0] as Element).attributes.id).toBe('c');
+  });
+});
+
+describe('updateDaisyTree', () => {
+  it('updates attributes of matching elements', () => {
+    const tree: Root = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          name: 'div',
+          attributes: { id: 'test1', class: 'old' },
+          children: [],
+        },
+        {
+          type: 'element',
+          name: 'div',
+          attributes: { id: 'test2', class: 'old' },
+          children: [],
+        },
+      ],
+    };
+
+    updateDaisyTree({
+      tree,
+      test: 'element',
+      check: (node) => node.attributes?.id === 'test1',
+      newAttributes: { class: 'new', 'data-updated': 'true' },
+    });
+
+    const firstDiv = tree.children[0] as Element;
+    const secondDiv = tree.children[1] as Element;
+
+    expect(firstDiv.attributes.class).toBe('new');
+    expect(firstDiv.attributes['data-updated']).toBe('true');
+    expect(secondDiv.attributes.class).toBe('old');
+  });
+
+  it('replaces subtree of matching elements', () => {
+    const tree: Root = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          name: 'container',
+          attributes: { id: 'target' },
+          children: [
+            {
+              type: 'element',
+              name: 'old',
+              attributes: {},
+              children: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const newSubtree: Root = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          name: 'new',
+          attributes: { class: 'replacement' },
+          children: [{ type: 'text', value: 'New content' }],
+        },
+      ],
+    };
+
+    updateDaisyTree({
+      tree,
+      test: 'element',
+      check: (node) => node.attributes?.id === 'target',
+      newSubtree,
+    });
+
+    const container = tree.children[0] as Element;
+    expect(container.children).toHaveLength(1);
+    const newChild = container.children[0] as Element;
+    expect(newChild.name).toBe('new');
+    expect(newChild.attributes.class).toBe('replacement');
+    expect((newChild.children[0] as Text).value).toBe('New content');
+  });
+
+  it('uses nodeSelector to target specific descendants', () => {
+    const tree: Root = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          name: 'wrapper',
+          attributes: { id: 'wrapper1' },
+          children: [
+            {
+              type: 'element',
+              name: 'inner',
+              attributes: { id: 'inner1' },
+              children: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    updateDaisyTree({
+      tree,
+      test: 'element',
+      check: (node) => node.attributes?.id === 'wrapper1',
+      nodeSelector: (node) => select('element[name=inner]', node) as Element,
+      newAttributes: { modified: 'true' },
+    });
+
+    const wrapper = tree.children[0] as Element;
+    const inner = wrapper.children[0] as Element;
+
+    expect(wrapper.attributes.modified).toBeUndefined();
+    expect(inner.attributes.modified).toBe('true');
+  });
+
+  it('does not modify elements that do not match check', () => {
+    const tree: Root = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          name: 'div',
+          attributes: { class: 'original' },
+          children: [],
+        },
+      ],
+    };
+
+    updateDaisyTree({
+      tree,
+      test: 'element',
+      check: (node) => node.attributes?.id === 'nonexistent',
+      newAttributes: { class: 'modified' },
+    });
+
+    const div = tree.children[0] as Element;
+    expect(div.attributes.class).toBe('original');
+  });
+
+  it('handles empty tree gracefully', () => {
+    const tree: Root = {
+      type: 'root',
+      children: [],
+    };
+
+    expect(() => {
+      updateDaisyTree({
+        tree,
+        newAttributes: { class: 'test' },
+      });
+    }).not.toThrow();
+  });
+});
+
+describe('renameFileInOpfTree', () => {
+  it('renames a file href in OPF manifest', () => {
+    const opfXml = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <manifest>
+    <item id="ncx" href="old-navigation.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="chapter1" href="chapter1.smil" media-type="application/smil+xml"/>
+    <item id="audio1" href="audio01.mp3" media-type="audio/mpeg"/>
+  </manifest>
+</package>`;
+
+    const tree = parseXml(opfXml);
+    renameFileInOpfTree(tree, 'old-navigation.ncx', 'new-navigation.ncx');
+
+    const allItems = selectAll('element[name=item]', tree) as Element[];
+    const ncxItem = allItems.find((item) => item.attributes.id === 'ncx');
+    const chapter1Item = allItems.find(
+      (item) => item.attributes.id === 'chapter1',
+    );
+
+    expect(ncxItem?.attributes.href).toBe('new-navigation.ncx');
+    expect(chapter1Item?.attributes.href).toBe('chapter1.smil');
+  });
+
+  it('renames only the first file when multiple have the same href', () => {
+    const opfXml = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <manifest>
+    <item id="item1" href="duplicate.txt" media-type="text/plain"/>
+    <item id="item2" href="duplicate.txt" media-type="text/plain"/>
+    <item id="item3" href="other.txt" media-type="text/plain"/>
+  </manifest>
+</package>`;
+
+    const tree = parseXml(opfXml);
+    renameFileInOpfTree(tree, 'duplicate.txt', 'renamed.txt');
+
+    const allItems = selectAll('element[name=item]', tree) as Element[];
+    const renamedItems = allItems.filter(
+      (item) => item.attributes.href === 'renamed.txt',
+    );
+    const duplicateItems = allItems.filter(
+      (item) => item.attributes.href === 'duplicate.txt',
+    );
+
+    // Only first match is renamed (due to 'return false' in implementation)
+    expect(renamedItems).toHaveLength(1);
+    expect(duplicateItems).toHaveLength(1);
+  });
+
+  it('does nothing if oldHref is not found', () => {
+    const opfXml = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <manifest>
+    <item id="chapter1" href="chapter1.smil" media-type="application/smil+xml"/>
+  </manifest>
+</package>`;
+
+    const tree = parseXml(opfXml);
+    renameFileInOpfTree(tree, 'nonexistent.smil', 'new.smil');
+
+    const allItems = selectAll('element[name=item]', tree) as Element[];
+    const chapter1Item = allItems.find(
+      (item) => item.attributes.id === 'chapter1',
+    );
+    expect(chapter1Item?.attributes.href).toBe('chapter1.smil');
+  });
+
+  it('handles empty manifest', () => {
+    const opfXml = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <manifest>
+  </manifest>
+</package>`;
+
+    const tree = parseXml(opfXml);
+
+    expect(() => {
+      renameFileInOpfTree(tree, 'any.txt', 'new.txt');
+    }).not.toThrow();
+  });
+});
+
+describe('updateAudioTimestampsById', () => {
+  it('updates clipBegin and clipEnd for element with matching id', () => {
+    const smilXml = `<?xml version="1.0" encoding="UTF-8"?>
+<smil xmlns="http://www.w3.org/2001/SMIL20/">
+  <body>
+    <seq id="seq1">
+      <par id="par1">
+        <text src="book.xml#txt1"/>
+        <audio src="audio.mp3" clipBegin="0:00:00.000" clipEnd="0:00:05.000"/>
+      </par>
+      <par id="par2">
+        <text src="book.xml#txt2"/>
+        <audio src="audio.mp3" clipBegin="0:00:05.000" clipEnd="0:00:10.000"/>
+      </par>
+    </seq>
+  </body>
+</smil>`;
+
+    const tree = parseXml(smilXml);
+    updateAudioTimestampsById(tree, 'par1', '0:00:01.500', '0:00:06.500');
+
+    const allPars = selectAll('element[name=par]', tree) as Element[];
+    const par1 = allPars.find((p) => p.attributes.id === 'par1');
+    const audioElement = select('element[name=audio]', par1) as Element;
+
+    expect(audioElement.attributes.clipBegin).toBe('0:00:01.500');
+    expect(audioElement.attributes.clipEnd).toBe('0:00:06.500');
+
+    const par2 = allPars.find((p) => p.attributes.id === 'par2');
+    const audio2Element = select('element[name=audio]', par2) as Element;
+
+    expect(audio2Element.attributes.clipBegin).toBe('0:00:05.000');
+    expect(audio2Element.attributes.clipEnd).toBe('0:00:10.000');
+  });
+
+  it('updates only clipBegin when clipEnd is undefined', () => {
+    const smilXml = `<?xml version="1.0" encoding="UTF-8"?>
+<smil xmlns="http://www.w3.org/2001/SMIL20/">
+  <body>
+    <par id="par1">
+      <text src="book.xml#txt1"/>
+      <audio src="audio.mp3" clipBegin="0:00:00.000" clipEnd="0:00:05.000"/>
+    </par>
+  </body>
+</smil>`;
+
+    const tree = parseXml(smilXml);
+    updateAudioTimestampsById(tree, 'par1', '0:00:02.000', undefined);
+
+    const allPars = selectAll('element[name=par]', tree) as Element[];
+    const par1 = allPars.find((p) => p.attributes.id === 'par1');
+    const audioElement = select('element[name=audio]', par1) as Element;
+
+    expect(audioElement.attributes.clipBegin).toBe('0:00:02.000');
+    expect(audioElement.attributes.clipEnd).toBe('0:00:05.000');
+  });
+
+  it('updates only clipEnd when clipBegin is undefined', () => {
+    const smilXml = `<?xml version="1.0" encoding="UTF-8"?>
+<smil xmlns="http://www.w3.org/2001/SMIL20/">
+  <body>
+    <par id="par1">
+      <text src="book.xml#txt1"/>
+      <audio src="audio.mp3" clipBegin="0:00:00.000" clipEnd="0:00:05.000"/>
+    </par>
+  </body>
+</smil>`;
+
+    const tree = parseXml(smilXml);
+    updateAudioTimestampsById(tree, 'par1', undefined, '0:00:07.000');
+
+    const allPars = selectAll('element[name=par]', tree) as Element[];
+    const par1 = allPars.find((p) => p.attributes.id === 'par1');
+    const audioElement = select('element[name=audio]', par1) as Element;
+
+    expect(audioElement.attributes.clipBegin).toBe('0:00:00.000');
+    expect(audioElement.attributes.clipEnd).toBe('0:00:07.000');
+  });
+
+  it('does nothing if id is not found', () => {
+    const smilXml = `<?xml version="1.0" encoding="UTF-8"?>
+<smil xmlns="http://www.w3.org/2001/SMIL20/">
+  <body>
+    <par id="par1">
+      <text src="book.xml#txt1"/>
+      <audio src="audio.mp3" clipBegin="0:00:00.000" clipEnd="0:00:05.000"/>
+    </par>
+  </body>
+</smil>`;
+
+    const tree = parseXml(smilXml);
+    updateAudioTimestampsById(
+      tree,
+      'nonexistent',
+      '0:00:01.000',
+      '0:00:02.000',
+    );
+
+    const allPars = selectAll('element[name=par]', tree) as Element[];
+    const par1 = allPars.find((p) => p.attributes.id === 'par1');
+    const audioElement = select('element[name=audio]', par1) as Element;
+
+    expect(audioElement.attributes.clipBegin).toBe('0:00:00.000');
+    expect(audioElement.attributes.clipEnd).toBe('0:00:05.000');
+  });
+
+  it('does nothing if element has no audio child', () => {
+    const smilXml = `<?xml version="1.0" encoding="UTF-8"?>
+<smil xmlns="http://www.w3.org/2001/SMIL20/">
+  <body>
+    <par id="par1">
+      <text src="book.xml#txt1"/>
+    </par>
+  </body>
+</smil>`;
+
+    const tree = parseXml(smilXml);
+
+    expect(() => {
+      updateAudioTimestampsById(tree, 'par1', '0:00:01.000', '0:00:02.000');
+    }).not.toThrow();
+
+    const allPars = selectAll('element[name=par]', tree) as Element[];
+    const par1 = allPars.find((p) => p.attributes.id === 'par1');
+    const audioElement = select('element[name=audio]', par1);
+
+    expect(audioElement).toBeUndefined();
+  });
+
+  it('handles nested structures correctly', () => {
+    const smilXml = `<?xml version="1.0" encoding="UTF-8"?>
+<smil xmlns="http://www.w3.org/2001/SMIL20/">
+  <body>
+    <seq id="outer">
+      <par id="inner">
+        <text src="book.xml#txt1"/>
+        <audio src="audio.mp3" clipBegin="0:00:00.000" clipEnd="0:00:05.000"/>
+      </par>
+    </seq>
+  </body>
+</smil>`;
+
+    const tree = parseXml(smilXml);
+    updateAudioTimestampsById(tree, 'inner', '0:00:01.000', '0:00:06.000');
+
+    const allElements = selectAll('element', tree) as Element[];
+    const innerPar = allElements.find((e) => e.attributes?.id === 'inner');
+    const audioElement = select('element[name=audio]', innerPar) as Element;
+
+    expect(audioElement.attributes.clipBegin).toBe('0:00:01.000');
+    expect(audioElement.attributes.clipEnd).toBe('0:00:06.000');
   });
 });

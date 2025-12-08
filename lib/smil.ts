@@ -115,3 +115,26 @@ export function updateSmilMetadataFromTree(
     }
   });
 }
+
+export function updateAudioTimestampsById(
+  tree: Root,
+  id: string,
+  newClipBegin?: string,
+  newClipEnd?: string,
+) {
+  visit(tree, 'element', (node) => {
+    if (node.attributes?.id === id) {
+      const audioElement = select('element[name=audio]', node) as Element;
+      if (audioElement) {
+        if (newClipBegin !== undefined) {
+          audioElement.attributes.clipBegin = newClipBegin;
+        }
+        if (newClipEnd !== undefined) {
+          audioElement.attributes.clipEnd = newClipEnd;
+        }
+      }
+      return false; // Stop traversing this branch
+    }
+    return undefined;
+  });
+}
