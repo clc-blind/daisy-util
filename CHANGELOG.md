@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.6](https://github.com/clc-blind/daisy-util/compare/v1.0.5...v1.0.6) (2026-02-10)
+
+
+### Bug Fixes
+
+* **opf:** update opf handlers ([e511ed3](https://github.com/clc-blind/daisy-util/commit/e511ed39093f110504c931191dd5a4b1a2569635))
+
 ## [1.0.5](https://github.com/clc-blind/daisy-util/compare/v1.0.4...v1.0.5) (2025-12-08)
 
 
