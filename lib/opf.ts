@@ -141,9 +141,21 @@ export function updateOpfMetadataFromTree(
     if (element.type !== 'element') return;
 
     if (dcElementNames.includes(element.name)) {
+      // Only update if the key exists in newMetadata
+      if (newMetadata[element.name] === undefined) return;
+
       const textEl = select('text', element) as Text;
 
-      textEl.value = String(newMetadata[element.name]);
+      if (textEl) {
+        // Update existing text node
+        textEl.value = String(newMetadata[element.name]);
+      } else {
+        // Create text node if it doesn't exist
+        element.children.push({
+          type: 'text',
+          value: String(newMetadata[element.name]),
+        } as Text);
+      }
 
       updatedKeys.add(element.name);
     }
